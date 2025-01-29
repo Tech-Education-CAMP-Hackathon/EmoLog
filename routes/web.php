@@ -46,4 +46,7 @@ Route::put('/calendar/update', [EventController::class, 'update'])->name('update
 
 Route::delete('/calendar/delete', [EventController::class, 'delete'])->name("delete"); // 予定の削除
 
+Route::post('/calendar/analyze', [EventController::class, 'analyzeAndSave'])->name('analyze');
+
+
 require __DIR__ . '/auth.php';

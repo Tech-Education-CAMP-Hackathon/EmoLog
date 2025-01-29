@@ -4,9 +4,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Event;
+use App\Services\SentimentAnalysisService;
 
 class EventController extends Controller
 {
+    protected $sentimentService;
+
+    public function __construct(SentimentAnalysisService $sentimentService)
+    {
+        $this->sentimentService = $sentimentService;
+    }
+
     public function show()
     {
         return view("calendars/calendar");
@@ -24,7 +32,7 @@ class EventController extends Controller
         $event->event_title = $request->input('event_title');
         $event->event_body = $request->input('event_body');
         $event->start_date = $request->input('start_date');
-        $event->end_date = date("Y-m-d", strtotime("{$request->input('end_date')} +1 day")); // FullCalendarが登録する終了日は仕様で1日ずれるので、その修正を行っている
+        $event->end_date = date("Y-m-d", strtotime("{$request->input('end_date')} +1 day"));
         $event->event_color = $request->input('event_color');
         $event->event_border_color = $request->input('event_color');
         $event->save();
@@ -32,22 +40,17 @@ class EventController extends Controller
         return redirect(route("show"));
     }
 
-    // DBから予定取得
     public function get(Request $request, Event $event)
     {
-        // バリデーション
         $request->validate([
             'start_date' => 'required|integer',
             'end_date' => 'required|integer'
         ]);
 
-        // 現在カレンダーが表示している日付の期間
-        $start_date = date('Y-m-d', $request->input('start_date') / 1000); // 日付変換（JSのタイムスタンプはミリ秒なので秒に変換）
+        $start_date = date('Y-m-d', $request->input('start_date') / 1000);
         $end_date = date('Y-m-d', $request->input('end_date') / 1000);
 
-        // 予定取得処理（これがaxiosのresponse.dataに入る）
         return $event->query()
-            // DBから取得する際にFullCalendarの形式にカラム名を変更する
             ->select(
                 'id',
                 'event_title as title',
@@ -57,9 +60,8 @@ class EventController extends Controller
                 'event_color as backgroundColor',
                 'event_border_color as borderColor'
             )
-            // 表示されているカレンダーのeventのみをDBから検索して表示
             ->where('end_date', '>', $start_date)
-            ->where('start_date', '<', $end_date) // AND条件
+            ->where('start_date', '<', $end_date)
             ->get();
     }
 
@@ -74,20 +76,57 @@ class EventController extends Controller
         $input->event_color = $request->input('event_color');
         $input->event_border_color = $request->input('event_color');
 
-        // 更新する予定をDBから探し（find）、内容が変更していたらupdated_timeを変更（fill）して、DBに保存する（save）
-        $event->find($request->input('id'))->fill($input->attributesToArray())->save(); // fill()の中身はArray型が必要だが、$inputのままではコレクションが返ってきてしまうため、Array型に変換
+        $event->find($request->input('id'))->fill($input->attributesToArray())->save();
 
-        // カレンダー表示画面にリダイレクトする
         return redirect(route("show"));
     }
 
-    // 予定の削除
     public function delete(Request $request, Event $event)
     {
-        // 削除する予定をDBから探し（find）、DBから物理削除する（delete）
         $event->find($request->input('id'))->delete();
 
-        // カレンダー表示画面にリダイレクトする
         return redirect(route("show"));
+    }
+
+    // 新しい感情分析メソッド
+    public function analyzeAndSave(Request $request)
+    {
+        $request->validate([
+            'text' => 'required|string',
+            'date' => 'required|date',
+        ]);
+
+        // OpenAIを使って感情分析を実行
+        $analysisResult = $this->sentimentService->analyzeSentiment($request->input('text'));
+
+        // 取得した感情の分類
+        $emotion = $analysisResult['emotion'] ?? 'Neutral'; // デフォルトはNeutral
+        $confidence = $analysisResult['confidence'] ?? 0.5;
+        $intensity = $analysisResult['intensity'] ?? 0.5;
+
+        // 感情ごとの背景色を設定
+        $emotionColors = [
+            '喜び' => 'orange',      // 喜び → 黄色
+            '悲しみ' => 'blue',    // 悲しみ → 青
+            '怒り' => 'red',       // 怒り → 赤
+            '怖さ' => 'purple',     // 怖さ → 紫
+            '驚き' => 'green',  // 驚き → 緑
+            'Neutral' => 'gray',    // 中立 → 灰色
+        ];
+
+        // 存在しない感情が来た場合はデフォルトの灰色
+        $eventColor = $emotionColors[$emotion] ?? 'gray';
+
+        // イベントをカレンダーに保存
+        Event::create([
+            'event_title' => ucfirst($emotion),
+            'event_body' => "信頼度: $confidence, 強度: $intensity",
+            'start_date' => $request->input('date'),
+            'end_date' => $request->input('date'),
+            'event_color' => $eventColor,
+            'event_border_color' => $eventColor,
+        ]);
+
+        return redirect(route('show'))->with('success', '感情がカレンダーに記録されました。');
     }
 }
