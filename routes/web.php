@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\SpeechController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,5 +49,6 @@ Route::delete('/calendar/delete', [EventController::class, 'delete'])->name("del
 
 Route::post('/calendar/analyze', [EventController::class, 'analyzeAndSave'])->name('analyze');
 
+Route::post('/api/speech-to-text', [EventController::class, 'transcribeAndSave']);
 
 require __DIR__ . '/auth.php';

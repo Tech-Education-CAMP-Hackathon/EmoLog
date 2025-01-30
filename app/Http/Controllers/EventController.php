@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Event;
 use App\Services\SentimentAnalysisService;
+use App\Services\SpeechService;
 
 class EventController extends Controller
 {
     protected $sentimentService;
+    protected $speechService;
 
-    public function __construct(SentimentAnalysisService $sentimentService)
+    public function __construct(SentimentAnalysisService $sentimentService, SpeechService $speechService)
     {
         $this->sentimentService = $sentimentService;
+        $this->speechService = $speechService;
     }
 
     public function show()
@@ -88,7 +91,7 @@ class EventController extends Controller
         return redirect(route("show"));
     }
 
-    // 新しい感情分析メソッド
+    // 感情分析メソッド
     public function analyzeAndSave(Request $request)
     {
         $request->validate([
@@ -96,28 +99,22 @@ class EventController extends Controller
             'date' => 'required|date',
         ]);
 
-        // OpenAIを使って感情分析を実行
         $analysisResult = $this->sentimentService->analyzeSentiment($request->input('text'));
-
-        // 取得した感情の分類
-        $emotion = $analysisResult['emotion'] ?? 'Neutral'; // デフォルトはNeutral
+        $emotion = $analysisResult['emotion'] ?? 'Neutral';
         $confidence = $analysisResult['confidence'] ?? 0.5;
         $intensity = $analysisResult['intensity'] ?? 0.5;
 
-        // 感情ごとの背景色を設定
         $emotionColors = [
-            '喜び' => 'orange',      // 喜び → 黄色
-            '悲しみ' => 'blue',    // 悲しみ → 青
-            '怒り' => 'red',       // 怒り → 赤
-            '怖さ' => 'purple',     // 怖さ → 紫
-            '驚き' => 'green',  // 驚き → 緑
-            'Neutral' => 'gray',    // 中立 → 灰色
+            '喜び' => 'orange',
+            '悲しみ' => 'blue',
+            '怒り' => 'red',
+            '怖さ' => 'purple',
+            '驚き' => 'green',
+            'Neutral' => 'gray',
         ];
 
-        // 存在しない感情が来た場合はデフォルトの灰色
         $eventColor = $emotionColors[$emotion] ?? 'gray';
 
-        // イベントをカレンダーに保存
         Event::create([
             'event_title' => ucfirst($emotion),
             'event_body' => "信頼度: $confidence, 強度: $intensity",
@@ -128,5 +125,17 @@ class EventController extends Controller
         ]);
 
         return redirect(route('show'))->with('success', '感情がカレンダーに記録されました。');
+    }
+
+    // 音声を文字起こししてカレンダーに追加するメソッド
+    public function transcribeAndSave(Request $request)
+    {
+        $transcribedText = $this->speechService->transcribeAudio($request);
+
+        // 文字起こし結果を用いて感情分析を実行
+        return $this->analyzeAndSave(new Request([
+            'text' => $transcribedText,
+            'date' => now()->format('Y-m-d')
+        ]));
     }
 }
