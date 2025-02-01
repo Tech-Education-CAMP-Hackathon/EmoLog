@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 
 export default function Dashboard({ auth }) {
     return (
@@ -14,6 +15,15 @@ export default function Dashboard({ auth }) {
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">You're logged in!</div>
                     </div>
+                </div>
+
+                <div className="mt-6 text-center">
+                    <a
+                        href="/calendar"
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        カレンダーへ移動
+                    </a>
                 </div>
             </div>
         </AuthenticatedLayout>

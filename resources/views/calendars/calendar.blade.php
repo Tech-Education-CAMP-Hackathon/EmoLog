@@ -3,13 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>FullCalendar</title>
-    <!-- Fonts -->
     <link href="https://fonts.bunny.net/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.jsx', 'resources/js/calendar.js'])
 </head>
 <body>
-    <!-- カレンダー表示 -->
+    <div id="mic-icon-container" style="display: flex; justify-content: center; align-items: center;">
+        <img id="mic-icon" src="/images/Group 38.png" alt="Mic Icon" style="width: 50px; cursor: pointer;" />
+    </div>
+
     <div id='calendar'></div>
 
     <!-- 予定追加モーダル -->
@@ -77,7 +80,7 @@
                 <button type="submit">決定</button>
             </form>
 
-            <form id="delete-form" method="post" action="{{ route('delete') }}">
+            <form id="delete-form" method="POST" action="{{ route('delete') }}">
                 @csrf
                 @method('DELETE')
                 <input type="hidden" id="delete-id" name="id" />
@@ -86,7 +89,7 @@
         </div>
     </div>
 
-    <!-- 録音専用モーダル -->
+    <!-- 録音モーダル -->
     <div id="modal-record" class="modal">
         <div class="modal-contents">
             <h2>音声録音</h2>
@@ -96,7 +99,6 @@
             <button type="button" onclick="closeRecordModal()">閉じる</button>
         </div>
     </div>
-
 </body>
 </html>
 
