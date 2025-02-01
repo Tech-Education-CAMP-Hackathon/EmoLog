@@ -20,6 +20,12 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
         ]);
 
+        User::create([
+            'name' => 'Test User2',
+            'email' => 'test2@example.com',
+            'password' => Hash::make('password2')
+        ]);
+
         // 他のシーダーを呼び出す場合
         // $this->call(OtherSeeder::class);
     }

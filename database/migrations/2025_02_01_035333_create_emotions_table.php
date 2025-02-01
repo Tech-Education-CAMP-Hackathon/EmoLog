@@ -11,15 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('events', function (Blueprint $table) {
+        Schema::create('emotions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade')->comment('ユーザーID');
-            $table->string('event_title')->comment('イベント名');
-            $table->string('event_body')->nullable()->comment('イベント内容');
-            $table->date('start_date')->comment('開始日');
-            $table->date('end_date')->comment('終了日');
-            $table->string('event_color')->comment('背景色');
-            $table->string('event_border_color')->comment('枠線色');
+            $table->string('emotion_type')->comment('感情タイプ（例: 喜び、悲しみなど）');
+            $table->float('confidence')->comment('分析結果の信頼度');
+            $table->float('intensity')->comment('感情の強度');
+            $table->text('text')->nullable()->comment('感情を記録したテキスト');
+            $table->date('recorded_date')->comment('記録日');
             $table->timestamps();
         });
     }
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('events');
+        Schema::dropIfExists('emotions');
     }
 };
