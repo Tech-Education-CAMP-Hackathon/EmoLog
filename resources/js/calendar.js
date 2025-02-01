@@ -195,8 +195,6 @@ if (calendarEl) {
         recognition.start();  // 音声認識の開始
     };
 
-
-
     window.sendAudioToSpeechAPI = async function (audioBlob) {
         const formData = new FormData();
         formData.append('audio', audioBlob);
@@ -246,86 +244,173 @@ if (calendarEl) {
 
     window.handleMicIconClick = async function () {
         const recordStatus = document.getElementById('record-modal-status');
+        const originalStatusText = recordStatus.textContent;
+        let silenceTimer = null;
+        const SILENCE_THRESHOLD = 3000;
 
         if (window.isRecording) {
+            console.log("既に録音中です。");
             recordStatus.textContent = 'すでに録音中です。';
             return;
         }
 
         window.isRecording = true;
+        console.log("録音を開始します。");
 
         try {
-            // 録音モーダルを開く
             openRecordModal();
+            console.log("録音モーダルを開きました。");
 
-            // 音声ストリーム取得
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+            console.log("オーディオストリームを取得しました。");
+
+            window.mediaRecorder = new MediaRecorder(stream);
             const audioChunks = [];
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
 
-            // 音声データの収集
-            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+            window.mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+                console.log("録音データチャンクを追加しました。");
+            };
 
-            mediaRecorder.onstop = async () => {
-                window.isRecording = false;
+            function resetSilenceTimer() {
+                if (silenceTimer) clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => {
+                    console.log("無音が続いたため録音を停止します。");
+                    window.mediaRecorder.stop();
+                    recordStatus.textContent = '無音が続いたため録音を停止しました。';
+                }, SILENCE_THRESHOLD);
+                console.log("無音タイマーをリセットしました。");
+            }
 
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const formData = new FormData();
-                formData.append('audio', audioBlob);
+            function monitorAudioLevel() {
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(dataArray);
+                const maxVolume = Math.max(...dataArray);
 
-                try {
-                    // 音声データを解析APIに送信
-                    const response = await axios.post('/api/speech-to-text', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' }
-                    });
+                if (maxVolume > 20) {
+                    resetSilenceTimer();
+                }
+                window.animationId = requestAnimationFrame(monitorAudioLevel);
+            }
 
-                    const transcript = response.data.text;
+            let finalTranscript = "";
 
-                    // 無効な文字列なら送信を中止
-                    if (!transcript || transcript.trim() === "" || transcript === 'undefined') {
-                        recordStatus.textContent = '無効な文字のため送信しませんでした。';
-                        return;
-                    }
+            // 音声認識設定
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'ja-JP';
+            recognition.interimResults = true;
 
-                    // 感情データをカレンダーに送信
-                    const emotionFormData = new FormData();
-                    emotionFormData.append('text', transcript);
-                    emotionFormData.append('date', new Date().toISOString().split('T')[0]);
+            recognition.onresult = function (event) {
+                finalTranscript = Array.from(event.results)
+                    .map(result => result[0].transcript)
+                    .join('');
 
-                    await axios.post('/calendar/analyze', emotionFormData, {
-                        headers: { 'Content-Type': 'multipart/form-data' }
-                    });
+                // 認識結果をコンソールに出力
+                console.log("リアルタイム音声認識結果:", finalTranscript);
 
-                    // カレンダーを更新
-                    calendar.removeAllEvents();
-                    calendar.refetchEvents();
+                // テキストエリアにも反映
+                document.getElementById('emotion_text').value = finalTranscript;
+            };
 
-                    alert("感情が記録されました！");
-
-                } catch (error) {
-                    console.error('APIエラー:', error);
-                    recordStatus.textContent = '解析エラーが発生しました。';
-                } finally {
-                    // モーダルを閉じる
-                    closeRecordModal();
+            recognition.onend = async function () {
+                console.log("音声認識が終了しました。");
+                if (finalTranscript.trim() !== "") {
+                    console.log("文字データをAPIに送信します。内容:", finalTranscript);  // 送信する文字データをログ出力
+                    await sendTextToAPI(finalTranscript);
+                } else {
+                    console.log("無効な文字データのため送信をキャンセルしました。");
+                    recordStatus.textContent = '無効な文字のため送信しませんでした。';
                 }
             };
 
-            // 録音開始
-            mediaRecorder.start();
-            recordStatus.textContent = '録音待機中...';
+            recognition.onerror = function (event) {
+                console.error('音声認識エラー:', event.error);
+                recordStatus.textContent = `音声認識エラー: ${event.error}`;
+            };
 
-            // 停止用リスナー
-            document.getElementById("record-toggle-btn").addEventListener("click", () => mediaRecorder.stop(), { once: true });
+            window.mediaRecorder.onstop = () => {
+                console.log("録音を停止しました。");
+                window.isRecording = false;
+                cancelAnimationFrame(window.animationId);
+                stream.getTracks().forEach(track => track.stop());
+                recognition.stop();
+            };
+
+            window.mediaRecorder.start();
+            recognition.start();
+            recordStatus.textContent = '録音待機中...';
+            resetSilenceTimer();
+            monitorAudioLevel();
 
         } catch (error) {
             console.error('録音エラー:', error);
             recordStatus.textContent = 'マイクのアクセスに失敗しました。';
             window.isRecording = false;
+        } finally {
+            window.addEventListener('modal-record-closed', () => {
+                console.log("モーダルが閉じられました。");
+                recordStatus.textContent = originalStatusText;
+            });
+        }
+    };
+
+    // 文字データをAPIに送信する関数
+    window.sendTextToAPI = async function (text) {
+        const recordStatus = document.getElementById('record-modal-status');
+
+        try {
+            console.log("感情データをAPIに送信中...データ:", text);  // 送信する文字データをログ出力
+            const emotionFormData = new FormData();
+            emotionFormData.append('text', text);
+            emotionFormData.append('date', new Date().toISOString().split('T')[0]);
+
+            showWaitingScreen();
+
+            await axios.post('/calendar/analyze', emotionFormData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            console.log("感情データが正常に記録されました。");
+            calendar.refetchEvents();
+            alert("感情がカレンダーに記録されました！");
+        } catch (error) {
+            console.error('APIエラー:', error);
+            const errorMessage = error.response?.data?.message || '解析に失敗しました。';
+            recordStatus.textContent = `エラー: ${errorMessage}`;
+        } finally {
+            hideWaitingScreen();
         }
     };
 
 
+
+
+
+    // 待機画面を表示する関数
+    function showWaitingScreen() {
+        document.getElementById('waiting-screen').style.display = 'block';
+        console.log("Waiting screen displayed");
+    }
+
+    // 待機画面を非表示にする関数
+    function hideWaitingScreen() {
+        document.getElementById('waiting-screen').style.display = 'none';
+        console.log("Waiting screen hidden");
+    }
+
+    function closeRecordModal() {
+        document.getElementById('modal-record').style.display = 'none';
+        if (window.isRecording) {
+            console.log("Closing record modal, stopping recording if active");
+            window.isRecording = false;
+            cancelAnimationFrame(window.animationId);
+        }
+    }
 
     document.getElementById("mic-icon").addEventListener("click", function () {
         handleMicIconClick();
