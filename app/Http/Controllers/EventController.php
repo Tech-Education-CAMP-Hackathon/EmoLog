@@ -32,6 +32,7 @@ class EventController extends Controller
             'event_color' => 'required',
         ]);
 
+        $event->user_id = auth()->id();
         $event->event_title = $request->input('event_title');
         $event->event_body = $request->input('event_body');
         $event->start_date = $request->input('start_date');
@@ -63,6 +64,7 @@ class EventController extends Controller
                 'event_color as backgroundColor',
                 'event_border_color as borderColor'
             )
+            ->where('user_id', auth()->id())
             ->where('end_date', '>', $start_date)
             ->where('start_date', '<', $end_date)
             ->get();
@@ -94,7 +96,6 @@ class EventController extends Controller
     // 感情分析メソッド
     public function analyzeAndSave(Request $request)
     {
-
         $analysisResult = $this->sentimentService->analyzeSentiment($request->input('text'));
         $emotion = $analysisResult['emotion'] ?? 'Neutral';
         $confidence = $analysisResult['confidence'] ?? 0.5;
@@ -105,7 +106,6 @@ class EventController extends Controller
             '悲しみ' => 'blue',
             '怒り' => 'red',
             '怖さ' => 'purple',
-            '恐れ' => 'purple',
             '驚き' => 'green',
             'Neutral' => 'gray',
         ];
@@ -113,6 +113,7 @@ class EventController extends Controller
         $eventColor = $emotionColors[$emotion] ?? 'gray';
 
         Event::create([
+            'user_id' => auth()->id(),  // ユーザーIDを追加
             'event_title' => ucfirst($emotion),
             'event_body' => "信頼度: $confidence, 強度: $intensity",
             'start_date' => $request->input('date'),
@@ -123,6 +124,7 @@ class EventController extends Controller
 
         return redirect(route('show'))->with('success', '感情がカレンダーに記録されました。');
     }
+
 
     // 音声を文字起こししてカレンダーに追加するメソッド
     public function transcribeAndSave(Request $request)

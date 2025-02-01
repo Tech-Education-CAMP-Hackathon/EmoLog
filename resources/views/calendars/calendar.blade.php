@@ -99,6 +99,12 @@
             <button type="button" onclick="closeRecordModal()">閉じる</button>
         </div>
     </div>
+
+    <footer style="text-align: center; margin-bottom: 20px;">
+        <nav>
+            <a href="{{ route('dashboard') }}" style="margin-right: 15px;">Dashboard</a>
+        </nav>
+    </footer>
 </body>
 </html>
 
