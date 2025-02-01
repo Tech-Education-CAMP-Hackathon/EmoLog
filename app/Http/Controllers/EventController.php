@@ -94,10 +94,6 @@ class EventController extends Controller
     // 感情分析メソッド
     public function analyzeAndSave(Request $request)
     {
-        $request->validate([
-            'text' => 'required|string',
-            'date' => 'required|date',
-        ]);
 
         $analysisResult = $this->sentimentService->analyzeSentiment($request->input('text'));
         $emotion = $analysisResult['emotion'] ?? 'Neutral';
@@ -109,6 +105,7 @@ class EventController extends Controller
             '悲しみ' => 'blue',
             '怒り' => 'red',
             '怖さ' => 'purple',
+            '恐れ' => 'purple',
             '驚き' => 'green',
             'Neutral' => 'gray',
         ];
