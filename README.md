@@ -22,7 +22,7 @@
 
 https:/emolog-d3f2d35ccb14.herokuapp.com/
 
-## 🔑 テストアカウント（デプロイ後に記載）
+## 🔑 テストアカウント
 
 -   **メールアドレス**: test@example.com
 -   **パスワード**:password
