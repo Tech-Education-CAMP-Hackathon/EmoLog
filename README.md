@@ -38,7 +38,7 @@ https:/emolog-d3f2d35ccb14.herokuapp.com/
 
 ## 📊 ER 図
 
--   ER.md を参照
+-   https://github.com/Tech-Education-CAMP-Hackathon/EmoLog/blob/main/ER.md
 
 ## 💡 工夫した点
 
