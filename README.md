@@ -20,7 +20,7 @@
 
 ## 🌍 URL
 
--  https:/emolog-d3f2d35ccb14.herokuapp.com
+-  https://emolog-d3f2d35ccb14.herokuapp.com
 
 ## 🔑 テストアカウント
 
