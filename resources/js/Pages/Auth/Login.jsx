@@ -23,7 +23,12 @@ export default function Login({ status, canResetPassword }) {
     const submit = (e) => {
         e.preventDefault();
 
-        post(route('login'));
+        post(route('login'), {
+            onSuccess: () => {
+                // ログイン成功後にdashboardにリダイレクト
+                Inertia.visit(route('dashboard'));
+            },
+        });
     };
 
     return (
