@@ -18,9 +18,9 @@
 
 **インフラ・デプロイ**
 
-## 🌍 URL
+## 🌍 URL(停止中)
 
--  https://emolog-d3f2d35ccb14.herokuapp.com
+-  https://emolog-d3f2d35ccb14.herokuapp.com 
 
 ## 🔑 テストアカウント
 
